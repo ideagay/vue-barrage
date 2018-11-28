@@ -4,14 +4,19 @@
         <div class="barrage-area">
             <canvas id="canvas" ref="canvas" :width="cWidth" :height="cHeight"
                     :style="{'width': cWidth/2 + 'px',
-                'height': cHeight/2 + 'px', 'border': '1px solid #ddd'}">
+                'height': cHeight/2 + 'px', 'border': '1px solid #eee'}">
             </canvas>
         </div>
         <div class="bottom">
             <label class="my-switch" for="dm">
                 <input type="checkbox" id="dm" v-model="dmStatus">
-                <span>弹幕</span>
+                <span>{{dmStatus ? '开启' : '关闭'}}</span>
             </label>
+            <div class="color-setting">
+                <span class="placeholder">#</span>
+                <input type="text" placeholder="设置颜色" v-model="color">
+                <span class="color" :style="{'background': '#' + color}"></span>
+            </div>
             <div class="input-wrap">
                 <input type="text" @keyup.enter="sent" v-model="dmInput" maxlength="20">
                 <button type="button" @click="sent">发射</button>
@@ -28,7 +33,8 @@ export default {
     return {
         dmArr: [], // 缓存弹幕数据的数组
         dmInput: '',
-        dmStatus: false,
+        color: '',
+        dmStatus: true,
         cWidth: 0,
         cHeight: 0,
         timer: null,
@@ -48,24 +54,22 @@ export default {
   methods: {
     start () {
         this.timer = setInterval(() => {
-            // eslint-disable-next-line
-            let ctx = this.ctx;
-            ctx.clearRect(0, 0, this.cWidth, this.cHeight);
-            ctx.save();
-            ctx.font = '30px Microsoft YaHei';
+            this.ctx.clearRect(0, 0, this.cWidth, this.cHeight);
+            this.ctx.save();
+            this.ctx.font = '30px Microsoft YaHei';
             if (!this.dmArr.length) this.stop();
             for (let i = 0, len = this.dmArr.length; i < len; i++) {
                 let dm = this.dmArr[i];
-                let overRange = -ctx.measureText(dm.text).width;
+                let overRange = dm.text && -this.ctx.measureText(dm.text).width;
+                dm.x -= dm.speed;
                 if (dm.x < overRange) {
                     this.dmArr.splice(i, 1);
                     continue;
                 }
-                dm.x -= dm.speed;
-                ctx.fillStyle = dm.color;
-                ctx.fillText(dm.text, dm.x, dm.y);
+                this.ctx.fillStyle = `#${dm.color}`;
+                this.ctx.fillText(dm.text, dm.x, dm.y);
             }
-            ctx.restore();
+            this.ctx.restore();
         }, 20);
     },
     getY () {
@@ -78,9 +82,9 @@ export default {
         // return Math.floor(Math.random() * 5) + 8;
     },
     getColor () {
-        return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+        return `${Math.floor(Math.random() * 16777215).toString(16)}`;
     },
-    pushDm (text) {
+    pushDm (text, color) {
         let y = this.getY(); // 先确定跑道
         let x = this.cWidth; // 初始位置
         let delayWidth = 0;
@@ -95,7 +99,7 @@ export default {
             x: x + delayWidth,
             y: y,
             speed: this.getSpeed(),
-            color: this.getColor()
+            color: color || this.getColor()
         });
     },
     sent () {
@@ -103,7 +107,7 @@ export default {
             return;
         }
         this.stop();
-        this.pushDm(this.dmInput);
+        this.pushDm(this.dmInput, this.color);
         this.start();
         this.dmInput = '';
     },
@@ -122,7 +126,7 @@ export default {
     this.cHeight = (document.body.clientHeight - 50) * 2;
     this.ctx = this.$refs.canvas.getContext('2d');
     this.initData();
-    // this.start();
+    this.start();
   }
 }
 
@@ -149,10 +153,13 @@ export default {
         height: calc(~'100vh - 50px');
     }
     .my-switch{
+        width: 80px;
+        margin-right: 10px;
         vertical-align: middle;
         height: 24px;
         display: flex;
         align-items: center;
+        color: #fff;
         input {
             display: inline-block;
             outline: none;
@@ -184,7 +191,6 @@ export default {
                 background: @green;
             }
         }
-
     }
     .main {
         .bottom {
@@ -200,8 +206,37 @@ export default {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            .color-setting{
+                margin-right: 10px;
+                position: relative;
+                input{
+                    -webkit-appearance: none;
+                    height: 30px;
+                    line-height: 30px;
+                    border-radius: 4px;
+                    border: none;
+                    outline: none;
+                    padding: 0 15px 0 18px;
+                    font-size: 14px;
+                }
+                .placeholder{
+                    position: absolute;
+                    left: 5px;
+                    top: 5px;
+                    z-index: 2;
+                }
+                .color{
+                    position: absolute;
+                    right: 5px;
+                    top: 9px;
+                    z-index: 2;
+                    width: 13px;
+                    height: 13px;
+                    border-radius: 100%;
+                }
+            }
             .input-wrap {
-                width: 80%;
+                flex: 1;
                 height: 36px;
                 border-radius: 50px;
                 background: #256b4b;
